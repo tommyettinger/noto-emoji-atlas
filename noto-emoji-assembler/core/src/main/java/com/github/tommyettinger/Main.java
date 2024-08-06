@@ -56,8 +56,8 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-    public static final String MODE = "MODIFY_JSON"; // run this first
-//    public static final String MODE = "EMOJI_LARGE"; // run this second
+//    public static final String MODE = "MODIFY_JSON"; // run this first
+    public static final String MODE = "EMOJI_LARGE"; // run this second
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
 //    public static final String MODE = "EMOJI_HTML";
