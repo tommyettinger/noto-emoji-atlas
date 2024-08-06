@@ -57,7 +57,8 @@ import java.util.regex.Pattern;
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_JSON"; // run this first
-    public static final String MODE = "EMOJI_LARGE"; // run this second
+//    public static final String MODE = "EMOJI_LARGE"; // run this second
+    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
 //    public static final String MODE = "EMOJI_HTML";
@@ -68,6 +69,7 @@ public class Main extends ApplicationAdapter {
     public static final String TYPE = "color";
 //    public static final String TYPE = "black";
     public static final String RAW_DIR = "noto-emoji-72x72-" + TYPE;
+    public static final String RAW_MID_DIR = "noto-emoji-32x32-" + TYPE;
 
     public static final String JSON = "noto-emoji-cleaned.json";
 
@@ -166,6 +168,28 @@ public class Main extends ApplicationAdapter {
                         if(entry.has("emoji"))
                             original.copyTo(Gdx.files.local("../../renamed-small-"+TYPE+"/emoji/" + entry.getString("emoji") + ".png"));
                         original.copyTo(Gdx.files.local("../../renamed-small-"+TYPE+"/name/" + name));
+                    }
+                } else {
+                    entry.remove();
+                }
+            }
+        }
+        else if("EMOJI_MID".equals(MODE)) {
+            JsonValue json = reader.parse(Gdx.files.internal(JSON));
+            ObjectSet<String> used = new ObjectSet<>(json.size);
+            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
+                String name = entry.getString("name");
+                if(used.add(name)) {
+                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
+                    FileHandle original = Gdx.files.local("../../"+RAW_MID_DIR+"/" + codename + ".png");
+                    if (original.exists()) {
+                        original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/emoji/" + emoji + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/name/" + name + ".png"));
+                        if(entry.hasChild("aliases")){
+                            for(JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next){
+                                original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/ignored/alias/" + alias.asString() + ".png"));
+                            }
+                        }
                     }
                 } else {
                     entry.remove();
