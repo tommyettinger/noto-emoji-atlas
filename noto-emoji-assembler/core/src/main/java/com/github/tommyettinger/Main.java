@@ -56,13 +56,12 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-    public static final String MODE = "EMOJI_LARGE"; // run this first
+    public static final String MODE = "MODIFY_JSON"; // run this first
+//    public static final String MODE = "EMOJI_LARGE"; // run this second
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
 //    public static final String MODE = "EMOJI_HTML";
 //    public static final String MODE = "FLAG";
-//    public static final String MODE = "MODIFY_JSON";
-//    public static final String MODE = "MODIFY_JSON";
 //    public static final String MODE = "WRITE_INFO";
 //    public static final String MODE = "ALTERNATE_PALETTES";
 
@@ -91,7 +90,7 @@ public class Main extends ApplicationAdapter {
                 for(String s : new String[]{
                         "description","subgroups","tags",
                         "skintone","skintone_combination","skintone_base_emoji","skintone_base_hexcode",
-                        "unicode","order"}){
+                        "unicode","order","unicode_version","ios_version"}){
                     entry.remove(s);
                 }
             }
@@ -179,12 +178,11 @@ public class Main extends ApplicationAdapter {
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
                 if(used.add(name)) {
-                    String codename = entry.getString("hexcode");
+                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
                     name += ".png";
                     FileHandle original = Gdx.files.local("../../"+RAW_DIR+"/" + codename + ".png");
                     if (original.exists()) {
-                        if(entry.has("emoji"))
-                            original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/emoji/" + entry.getString("emoji") + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/emoji/" + emoji + ".png"));
                         original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/name/" + name));
                     }
                 } else {
@@ -327,16 +325,16 @@ public class Main extends ApplicationAdapter {
             sb.append("<h1>NotoEmoji Preview</h1>\n");
             sb.append("<p>This shows all emoji supported by " +
                     "<a href=\"https://github.com/tommyettinger/noto-emoji-atlas\">NotoEmojiAtlas</a>, " +
-                    "along with the two names each can be looked up by.</p>\n");
-            if(TYPE.equals("color"))
-                sb.append("<p>These are the full-color emoji. There are also emoji that use only a black line "+
-                        "<a href=\"black").append(".html\">available here</a>.</p>\n");
-            else
-                sb.append("<p>These are the black-line-only emoji. There are also emoji that use full color "+
-                        "<a href=\"index").append(".html\">available here</a>.</p>\n");
-            sb.append("<p>The atlases and all image assets are licensed under " +
-                    "<a href=\"https://github.com/tommyettinger/noto-emoji-atlas/blob/main/LICENSE.txt\">CC-BY-SA 4.0</a>.</p>\n");
-            sb.append("<p>Thanks to the entire <a href=\"https://github.com/googlefonts/noto-emoji/\">NotoEmoji project</a>!</p>\n");
+                    "along with the names each can be looked up by.</p>\n");
+//            if(TYPE.equals("color"))
+//                sb.append("<p>These are the full-color emoji. There are also emoji that use only a black line "+
+//                        "<a href=\"black").append(".html\">available here</a>.</p>\n");
+//            else
+//                sb.append("<p>These are the black-line-only emoji. There are also emoji that use full color "+
+//                        "<a href=\"index").append(".html\">available here</a>.</p>\n");
+            sb.append("<p>The atlases and all image assets are licensed under the " +
+                    "<a href=\"https://github.com/tommyettinger/noto-emoji-atlas/blob/main/LICENSE.txt\">OFL 1.1</a>.</p>\n");
+            sb.append("<p>Thanks to the entire <a href=\"https://github.com/googlefonts/noto-emoji/\">Noto Emoji project</a>!</p>\n");
             sb.append("<div class=\"box\">\n");
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String emojiChar = entry.getString("emoji", "");
@@ -391,6 +389,13 @@ public class Main extends ApplicationAdapter {
     public static String removeAccents(String str) {
         String alteredString = Normalizer.normalize(str, Normalizer.Form.NFD);
         return diacritics.matcher(alteredString).replaceAll("");
+    }
+
+    public static String emojiToCodePoints(String emoji) {
+        String name = emoji.codePoints()
+                .mapToObj(pt -> String.format("%04X", pt))
+                .reduce("emoji_u", (a, b) -> a + b + "_");
+        return name.substring(0, name.length()-1);
     }
 
 }
