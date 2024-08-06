@@ -179,11 +179,15 @@ public class Main extends ApplicationAdapter {
                 String name = entry.getString("name");
                 if(used.add(name)) {
                     String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    name += ".png";
                     FileHandle original = Gdx.files.local("../../"+RAW_DIR+"/" + codename + ".png");
                     if (original.exists()) {
                         original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/emoji/" + emoji + ".png"));
-                        original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/name/" + name));
+                        original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/name/" + name + ".png"));
+                        if(entry.hasChild("aliases")){
+                            for(JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next){
+                                original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/ignored/alias/" + alias.asString() + ".png"));
+                            }
+                        }
                     }
                 } else {
                     entry.remove();
