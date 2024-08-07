@@ -56,6 +56,8 @@ import java.util.regex.Pattern;
  * </pre>
  * To batch convert the SVG flags to PNGs of some appropriate size:
  * On Windows, using (old) rsvg-convert (downloaded from <a href="https://opensourcepack.blogspot.com/2012/06/rsvg-convert-svg-image-conversion-tool.html">this blog/SourceForge</a>):
+ * Note, some of the SVG files are actually symlinks to other SVG files!
+ * These can have the symlinked contents copied into the file that had been a symlink.
  * <pre>
  *     FOR %A IN (*.svg) DO "C:\path\to\rsvg-convert.exe" -w 72 -h 72 -a %A -o %~nA.png
  * </pre>
