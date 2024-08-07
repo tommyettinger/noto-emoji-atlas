@@ -61,6 +61,11 @@ import java.util.regex.Pattern;
  * <pre>
  *     FOR %A IN (*.svg) DO "C:\path\to\rsvg-convert.exe" -w 72 -h 72 -a %A -o %~nA.png
  * </pre>
+ * Weird regex for the zwj sequences:
+ * <pre>
+ *     [^\n;]+;[^;]+; (.+?)\s*\#.+\[1\] \(([^\)]+)\)
+ *     map.put("$2", "$1");
+ * </pre>
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_JSON"; // run this first
