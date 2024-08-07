@@ -1,5 +1,5 @@
-name=OpenMoji
-filename=
+name=NotoEmoji
+filename=noto-emoji.atlas
 output=atlas-mid-color
 
 alias=true
@@ -11,17 +11,17 @@ fast=true
 filterMag=Linear
 filterMin=Linear
 ignoreBlankImages=true
-maxHeight=2048
+maxHeight=4096
 maxWidth=4096
-minHeight=512
-minWidth=512
+minHeight=1024
+minWidth=2048
 paddingX=2
 paddingY=2
 pot=true
 mof=false
 rotation=false
-stripWhitespaceX=false
-stripWhitespaceY=false
+stripWhitespaceX=true
+stripWhitespaceY=true
 wrapX=ClampToEdge
 wrapY=ClampToEdge
 premultiplyAlpha=false
@@ -29,12 +29,12 @@ grid=false
 square=false
 bleed=true
 limitMemory=true
-useIndexes=true
+useIndexes=false
 prettyPrint=false
 legacyOutput=false
 
 scaleFactors=[{suffix:"",factor:1,resampling:bicubic}]
-inputFiles=[{path:scaled-mid-color,type:Input,dirFilePrefix:null,recursive:true,flattenPaths:true}]
+inputFiles=[{path:renamed-mid-color,type:Input,dirFilePrefix:null,recursive:true,flattenPaths:true}]
 keepInputFileExtensions=false
 
 
