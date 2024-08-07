@@ -54,6 +54,11 @@ import java.util.regex.Pattern;
  * <pre>
  *     magick mogrify -resize 16x16 -sharpen 0x2.0 "*.png"
  * </pre>
+ * To batch convert the SVG flags to PNGs of some appropriate size:
+ * On Windows, using (old) rsvg-convert (downloaded from <a href="https://opensourcepack.blogspot.com/2012/06/rsvg-convert-svg-image-conversion-tool.html">this blog/SourceForge</a>):
+ * <pre>
+ *     FOR %A IN (*.svg) DO "C:\path\to\rsvg-convert.exe" -w 72 -h 72 -a %A -o %~nA.png
+ * </pre>
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_JSON"; // run this first
