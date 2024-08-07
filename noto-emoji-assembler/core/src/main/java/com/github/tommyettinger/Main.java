@@ -10,15 +10,15 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.utils.JsonReader;
-import com.badlogic.gdx.utils.JsonValue;
-import com.badlogic.gdx.utils.JsonWriter;
-import com.badlogic.gdx.utils.ObjectSet;
+import com.badlogic.gdx.utils.*;
 import com.github.tommyettinger.anim8.Dithered;
 import com.github.tommyettinger.anim8.PNG8;
 import com.github.tommyettinger.anim8.QualityPalette;
 
+import java.io.IOException;
+import java.lang.StringBuilder;
 import java.text.Normalizer;
+import java.util.HashMap;
 import java.util.regex.Pattern;
 
 /**
@@ -64,9 +64,10 @@ import java.util.regex.Pattern;
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_JSON"; // run this first
+    public static final String MODE = "BUILD_JSON"; // run this first
 //    public static final String MODE = "EMOJI_LARGE"; // run this second
 //    public static final String MODE = "EMOJI_MID";
-    public static final String MODE = "EMOJI_SMALL";
+//    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
 //    public static final String MODE = "EMOJI_HTML";
 //    public static final String MODE = "FLAG";
@@ -84,7 +85,33 @@ public class Main extends ApplicationAdapter {
     @Override
     public void create() {
         JsonReader reader = new JsonReader();
-        if("MODIFY_JSON".equals(MODE)) {
+
+        JsonValue open = reader.parse(Gdx.files.internal("openmoji.json"));
+        HashMap<String, JsonValue> openmojiMap = new HashMap<>(open.size);
+        for (JsonValue entry = open.child; entry != null; entry = entry.next) {
+            String name = removeAccents(entry.getString("description"))
+                    .replace(':', ',').replace('“', '\'').replace('”', '\'').replace('’', '\'')
+                    .replace(".", "").replace("&", "and");
+            entry.addChild("name", new JsonValue(name));
+            openmojiMap.put(entry.getString("emoji"), entry);
+        }
+
+        if ("BUILD_JSON".equals(MODE)) {
+            JsonValue json = reader.parse(Gdx.files.internal("emoji_15_1.json"));
+            HashMap<String, JsonValue> gemojiMap = new HashMap<>(open.size);
+            for (JsonValue entry = open.child; entry != null; entry = entry.next) {
+                gemojiMap.put(entry.getString("emoji"), entry);
+            }
+            FileHandle outJson = Gdx.files.local("noto-emoji-rebuilt.json");
+
+            FileHandle rawDir = Gdx.files.local("../../" + RAW_DIR + "/");
+            FileHandle[] files = rawDir.list(".png");
+            for (FileHandle fh : files) {
+                String emoji = codePointsToEmoji(fh.nameWithoutExtension());
+            }
+            // TODO: I have no idea what I am going to do to write this JSON.
+            // TODO: Maybe I don't need to... Maybe I can build an in-memory data structure.
+        } else if ("MODIFY_JSON".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
             //"description": "[^"]*[^\u0000-\u007F][^"]*",
             //To locate any names with characters that could be a problem, use this regex (may need expanding):
@@ -97,17 +124,16 @@ public class Main extends ApplicationAdapter {
                         .replace(':', ',').replace('“', '\'').replace('”', '\'').replace('’', '\'')
                         .replace(".", "").replace("&", "and");
                 entry.addChild("name", new JsonValue(name));
-                for(String s : new String[]{
-                        "description","subgroups","tags",
-                        "skintone","skintone_combination","skintone_base_emoji","skintone_base_hexcode",
-                        "unicode","order","unicode_version","ios_version"}){
+                for (String s : new String[]{
+                        "description", "subgroups", "tags",
+                        "skintone", "skintone_combination", "skintone_base_emoji", "skintone_base_hexcode",
+                        "unicode", "order", "unicode_version", "ios_version"}) {
                     entry.remove(s);
                 }
             }
 
             Gdx.files.local(JSON).writeString(json.toJson(JsonWriter.OutputType.json).replace("{", "\n{"), false);
-        }
-        else if("ALTERNATE_PALETTES".equals(MODE)) {
+        } else if ("ALTERNATE_PALETTES".equals(MODE)) {
             FileHandle paletteDir = Gdx.files.local("../../alt-palette/");
             FileHandle[] paletteImages = paletteDir.list(".png");
             QualityPalette qp = new QualityPalette();
@@ -125,31 +151,30 @@ public class Main extends ApplicationAdapter {
                 png.setDitherAlgorithm(Dithered.DitherAlgorithm.NONE);
                 png.setDitherStrength(1f);
                 png.setPalette(qp);
-                Pixmap large = new Pixmap(Gdx.files.local("../../atlas/NotoEmoji"+TYPE+".png"));
-                png.write(current.child("atlas/NotoEmoji"+TYPE+".png"), large, false, true);
+                Pixmap large = new Pixmap(Gdx.files.local("../../atlas/NotoEmoji" + TYPE + ".png"));
+                png.write(current.child("atlas/NotoEmoji" + TYPE + ".png"), large, false, true);
                 large.dispose();
                 for (int i = 2; i <= 5; i++) {
-                    Pixmap largeN = new Pixmap(Gdx.files.local("../../atlas/NotoEmoji"+TYPE+i+".png"));
-                    png.write(current.child("atlas/NotoEmoji"+TYPE+i+".png"), largeN, false, true);
+                    Pixmap largeN = new Pixmap(Gdx.files.local("../../atlas/NotoEmoji" + TYPE + i + ".png"));
+                    png.write(current.child("atlas/NotoEmoji" + TYPE + i + ".png"), largeN, false, true);
                     largeN.dispose();
                 }
                 Gdx.files.local("../../atlas/NotoEmoji.atlas").copyTo(current.child("atlas"));
-                Pixmap mid = new Pixmap(Gdx.files.local("../../atlas-mid/NotoEmoji"+TYPE+".png"));
-                png.write(current.child("atlas-mid/NotoEmoji"+TYPE+".png"), mid, false, true);
+                Pixmap mid = new Pixmap(Gdx.files.local("../../atlas-mid/NotoEmoji" + TYPE + ".png"));
+                png.write(current.child("atlas-mid/NotoEmoji" + TYPE + ".png"), mid, false, true);
                 mid.dispose();
-                Gdx.files.local("../../atlas-mid/NotoEmoji"+TYPE+".atlas").copyTo(current.child("atlas-mid"));
-                Pixmap small = new Pixmap(Gdx.files.local("../../atlas-small/NotoEmoji"+TYPE+".png"));
-                png.write(current.child("atlas-small/NotoEmoji"+TYPE+".png"), small, false, true);
+                Gdx.files.local("../../atlas-mid/NotoEmoji" + TYPE + ".atlas").copyTo(current.child("atlas-mid"));
+                Pixmap small = new Pixmap(Gdx.files.local("../../atlas-small/NotoEmoji" + TYPE + ".png"));
+                png.write(current.child("atlas-small/NotoEmoji" + TYPE + ".png"), small, false, true);
                 small.dispose();
-                Gdx.files.local("../../atlas-small/NotoEmoji"+TYPE+".atlas").copyTo(current.child("atlas-small"));
+                Gdx.files.local("../../atlas-small/NotoEmoji" + TYPE + ".atlas").copyTo(current.child("atlas-small"));
             }
-        }
-        else if("WRITE_INFO".equals(MODE)) {
+        } else if ("WRITE_INFO".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             ObjectSet<String> used = new ObjectSet<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
-                if(used.add(name)) {
+                if (used.add(name)) {
 //                    name += ".png";
                     entry.remove("hexcode");
 //                    FileHandle original = Gdx.files.local("../../scaled-mid-"+TYPE+"/name/" + name);
@@ -163,21 +188,20 @@ public class Main extends ApplicationAdapter {
                 }
             }
             Gdx.files.local("noto-emoji-info.json").writeString(json.toJson(JsonWriter.OutputType.json).replace("{", "\n{"), false);
-        }
-        else if("EMOJI_SMALL".equals(MODE)) {
+        } else if ("EMOJI_SMALL".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             ObjectSet<String> used = new ObjectSet<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
-                if(used.add(name)) {
+                if (used.add(name)) {
                     String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    FileHandle original = Gdx.files.local("../../"+RAW_SMALL_DIR+"/" + codename + ".png");
+                    FileHandle original = Gdx.files.local("../../" + RAW_SMALL_DIR + "/" + codename + ".png");
                     if (original.exists()) {
-                        original.copyTo(Gdx.files.local("../../renamed-small-"+TYPE+"/emoji/" + emoji + ".png"));
-                        original.copyTo(Gdx.files.local("../../renamed-small-"+TYPE+"/name/" + name + ".png"));
-                        if(entry.hasChild("aliases")){
-                            for(JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next){
-                                original.copyTo(Gdx.files.local("../../renamed-small-"+TYPE+"/ignored/alias/" + alias.asString() + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/emoji/" + emoji + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/name/" + name + ".png"));
+                        if (entry.hasChild("aliases")) {
+                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
+                                original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/ignored/alias/" + alias.asString() + ".png"));
                             }
                         }
                     }
@@ -185,21 +209,20 @@ public class Main extends ApplicationAdapter {
                     entry.remove();
                 }
             }
-        }
-        else if("EMOJI_MID".equals(MODE)) {
+        } else if ("EMOJI_MID".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             ObjectSet<String> used = new ObjectSet<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
-                if(used.add(name)) {
+                if (used.add(name)) {
                     String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    FileHandle original = Gdx.files.local("../../"+RAW_MID_DIR+"/" + codename + ".png");
+                    FileHandle original = Gdx.files.local("../../" + RAW_MID_DIR + "/" + codename + ".png");
                     if (original.exists()) {
-                        original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/emoji/" + emoji + ".png"));
-                        original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/name/" + name + ".png"));
-                        if(entry.hasChild("aliases")){
-                            for(JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next){
-                                original.copyTo(Gdx.files.local("../../renamed-mid-"+TYPE+"/ignored/alias/" + alias.asString() + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-mid-" + TYPE + "/emoji/" + emoji + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-mid-" + TYPE + "/name/" + name + ".png"));
+                        if (entry.hasChild("aliases")) {
+                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
+                                original.copyTo(Gdx.files.local("../../renamed-mid-" + TYPE + "/ignored/alias/" + alias.asString() + ".png"));
                             }
                         }
                     }
@@ -207,21 +230,20 @@ public class Main extends ApplicationAdapter {
                     entry.remove();
                 }
             }
-        }
-        else if("EMOJI_LARGE".equals(MODE)) {
+        } else if ("EMOJI_LARGE".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             ObjectSet<String> used = new ObjectSet<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
-                if(used.add(name)) {
+                if (used.add(name)) {
                     String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    FileHandle original = Gdx.files.local("../../"+RAW_DIR+"/" + codename + ".png");
+                    FileHandle original = Gdx.files.local("../../" + RAW_DIR + "/" + codename + ".png");
                     if (original.exists()) {
-                        original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/emoji/" + emoji + ".png"));
-                        original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/name/" + name + ".png"));
-                        if(entry.hasChild("aliases")){
-                            for(JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next){
-                                original.copyTo(Gdx.files.local("../../renamed-"+TYPE+"/ignored/alias/" + alias.asString() + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/emoji/" + emoji + ".png"));
+                        original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/name/" + name + ".png"));
+                        if (entry.hasChild("aliases")) {
+                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
+                                original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/ignored/alias/" + alias.asString() + ".png"));
                             }
                         }
                     }
@@ -229,125 +251,123 @@ public class Main extends ApplicationAdapter {
                     entry.remove();
                 }
             }
-        }
-        else if("EMOJI_INOFFENSIVE".equals(MODE) || "EMOJI_INOFFENSIVE_MONO".equals(MODE)) {
+        } else if ("EMOJI_INOFFENSIVE".equals(MODE) || "EMOJI_INOFFENSIVE_MONO".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             ObjectSet<String> used = new ObjectSet<>(json.size);
             String where = "EMOJI_INOFFENSIVE".equals(MODE) ? "/inoffensive-" : "/inoffensive-mono-";
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = entry.getString("name");
-                if(name.endsWith("skin tone")) continue; // we're intending to make the images grayscale.
-                if(name.contains("flag")) continue; // some false positives, but less politically sensitive stuff.
-                if("star of David".equals(name)) continue;
-                if("wheel of dharma".equals(name)) continue;
-                if("yin yang".equals(name)) continue;
-                if("latin cross".equals(name)) continue;
-                if("orthodox cross".equals(name)) continue;
-                if("star and crescent".equals(name)) continue;
-                if("menorah".equals(name)) continue;
-                if("dotted six-pointed star".equals(name)) continue;
-                if("khanda".equals(name)) continue;
-                if("red hair".equals(name)) continue;
-                if("curly hair".equals(name)) continue;
-                if("white hair".equals(name)) continue;
-                if("bald".equals(name)) continue;
-                if("no one under eighteen".equals(name)) continue;
-                if("no smoking".equals(name)) continue;
-                if("cigarette".equals(name)) continue;
-                if("bomb".equals(name)) continue;
-                if("church".equals(name)) continue;
-                if("mosque".equals(name)) continue;
-                if("hindu temple".equals(name)) continue;
-                if("synagogue".equals(name)) continue;
-                if("shinto shrine".equals(name)) continue;
-                if("kaaba".equals(name)) continue;
-                if("map of Japan".equals(name)) continue;
-                if("wedding".equals(name)) continue;
-                if("Tokyo tower".equals(name)) continue;
-                if("Statue of Liberty".equals(name)) continue;
-                if("sake".equals(name)) continue;
-                if("love hotel".equals(name)) continue;
-                if("breast-feeding".equals(name)) continue;
-                if("eggplant".equals(name)) continue;
-                if("peach".equals(name)) continue;
-                if("bottle with popping cork".equals(name)) continue;
-                if("wine glass".equals(name)) continue;
-                if("cocktail glass".equals(name)) continue;
-                if("tropical drink".equals(name)) continue;
-                if("beer mug".equals(name)) continue;
-                if("clinking beer mugs".equals(name)) continue;
-                if("clinking glasses".equals(name)) continue;
-                if("tumbler glass".equals(name)) continue;
-                if("drunk person".equals(name)) continue;
-                if("trump".equals(name)) continue;
-                if("Greta Thunberg".equals(name)) continue;
-                if("Twitter".equals(name)) continue;
-                if("pinterest".equals(name)) continue;
-                if("facebook".equals(name)) continue;
-                if("instagram".equals(name)) continue;
-                if("youtube".equals(name)) continue;
-                if("github".equals(name)) continue;
-                if("linkedin".equals(name)) continue;
-                if("android".equals(name)) continue;
-                if("musicbrainz".equals(name)) continue;
-                if("openfoodfact".equals(name)) continue;
-                if("openstreetmap".equals(name)) continue;
-                if("wikidata".equals(name)) continue;
-                if("Firefox".equals(name)) continue;
-                if("Safari".equals(name)) continue;
-                if("Opera".equals(name)) continue;
-                if("Chromium".equals(name)) continue;
-                if("Chrome".equals(name)) continue;
-                if("Netscape Navigator".equals(name)) continue;
-                if("Internet Explorer".equals(name)) continue;
-                if("Edge".equals(name)) continue;
-                if("iNaturalist".equals(name)) continue;
-                if("gitlab".equals(name)) continue;
-                if("mastodon".equals(name)) continue;
-                if("peertube".equals(name)) continue;
-                if("pixelfed".equals(name)) continue;
-                if("signal".equals(name)) continue;
-                if("element".equals(name)) continue;
-                if("jellyfin".equals(name)) continue;
-                if("reddit".equals(name)) continue;
-                if("discord".equals(name)) continue;
-                if("c".equals(name)) continue;
-                if("cplusplus".equals(name)) continue;
-                if("csharp".equals(name)) continue;
-                if("chrome canary".equals(name)) continue;
-                if("firefox developer".equals(name)) continue;
-                if("firefox nightly".equals(name)) continue;
-                if("javascript".equals(name)) continue;
-                if("typescript".equals(name)) continue;
-                if("webassembly".equals(name)) continue;
-                if("svg".equals(name)) continue;
-                if("markdown".equals(name)) continue;
-                if("winrar".equals(name)) continue;
-                if("ubuntu".equals(name)) continue;
-                if("windows".equals(name)) continue;
-                if("artstation".equals(name)) continue;
-                if("apple".equals(name)) continue;
-                if(name.startsWith("family")) continue;
-                if(name.startsWith("couple")) continue;
-                if(name.startsWith("kiss")) continue;
-                if(name.startsWith("pregnant")) continue;
-                if(name.contains("holding hands")) continue;
-                if(used.add(name)) {
+                if (name.endsWith("skin tone")) continue; // we're intending to make the images grayscale.
+                if (name.contains("flag")) continue; // some false positives, but less politically sensitive stuff.
+                if ("star of David".equals(name)) continue;
+                if ("wheel of dharma".equals(name)) continue;
+                if ("yin yang".equals(name)) continue;
+                if ("latin cross".equals(name)) continue;
+                if ("orthodox cross".equals(name)) continue;
+                if ("star and crescent".equals(name)) continue;
+                if ("menorah".equals(name)) continue;
+                if ("dotted six-pointed star".equals(name)) continue;
+                if ("khanda".equals(name)) continue;
+                if ("red hair".equals(name)) continue;
+                if ("curly hair".equals(name)) continue;
+                if ("white hair".equals(name)) continue;
+                if ("bald".equals(name)) continue;
+                if ("no one under eighteen".equals(name)) continue;
+                if ("no smoking".equals(name)) continue;
+                if ("cigarette".equals(name)) continue;
+                if ("bomb".equals(name)) continue;
+                if ("church".equals(name)) continue;
+                if ("mosque".equals(name)) continue;
+                if ("hindu temple".equals(name)) continue;
+                if ("synagogue".equals(name)) continue;
+                if ("shinto shrine".equals(name)) continue;
+                if ("kaaba".equals(name)) continue;
+                if ("map of Japan".equals(name)) continue;
+                if ("wedding".equals(name)) continue;
+                if ("Tokyo tower".equals(name)) continue;
+                if ("Statue of Liberty".equals(name)) continue;
+                if ("sake".equals(name)) continue;
+                if ("love hotel".equals(name)) continue;
+                if ("breast-feeding".equals(name)) continue;
+                if ("eggplant".equals(name)) continue;
+                if ("peach".equals(name)) continue;
+                if ("bottle with popping cork".equals(name)) continue;
+                if ("wine glass".equals(name)) continue;
+                if ("cocktail glass".equals(name)) continue;
+                if ("tropical drink".equals(name)) continue;
+                if ("beer mug".equals(name)) continue;
+                if ("clinking beer mugs".equals(name)) continue;
+                if ("clinking glasses".equals(name)) continue;
+                if ("tumbler glass".equals(name)) continue;
+                if ("drunk person".equals(name)) continue;
+                if ("trump".equals(name)) continue;
+                if ("Greta Thunberg".equals(name)) continue;
+                if ("Twitter".equals(name)) continue;
+                if ("pinterest".equals(name)) continue;
+                if ("facebook".equals(name)) continue;
+                if ("instagram".equals(name)) continue;
+                if ("youtube".equals(name)) continue;
+                if ("github".equals(name)) continue;
+                if ("linkedin".equals(name)) continue;
+                if ("android".equals(name)) continue;
+                if ("musicbrainz".equals(name)) continue;
+                if ("openfoodfact".equals(name)) continue;
+                if ("openstreetmap".equals(name)) continue;
+                if ("wikidata".equals(name)) continue;
+                if ("Firefox".equals(name)) continue;
+                if ("Safari".equals(name)) continue;
+                if ("Opera".equals(name)) continue;
+                if ("Chromium".equals(name)) continue;
+                if ("Chrome".equals(name)) continue;
+                if ("Netscape Navigator".equals(name)) continue;
+                if ("Internet Explorer".equals(name)) continue;
+                if ("Edge".equals(name)) continue;
+                if ("iNaturalist".equals(name)) continue;
+                if ("gitlab".equals(name)) continue;
+                if ("mastodon".equals(name)) continue;
+                if ("peertube".equals(name)) continue;
+                if ("pixelfed".equals(name)) continue;
+                if ("signal".equals(name)) continue;
+                if ("element".equals(name)) continue;
+                if ("jellyfin".equals(name)) continue;
+                if ("reddit".equals(name)) continue;
+                if ("discord".equals(name)) continue;
+                if ("c".equals(name)) continue;
+                if ("cplusplus".equals(name)) continue;
+                if ("csharp".equals(name)) continue;
+                if ("chrome canary".equals(name)) continue;
+                if ("firefox developer".equals(name)) continue;
+                if ("firefox nightly".equals(name)) continue;
+                if ("javascript".equals(name)) continue;
+                if ("typescript".equals(name)) continue;
+                if ("webassembly".equals(name)) continue;
+                if ("svg".equals(name)) continue;
+                if ("markdown".equals(name)) continue;
+                if ("winrar".equals(name)) continue;
+                if ("ubuntu".equals(name)) continue;
+                if ("windows".equals(name)) continue;
+                if ("artstation".equals(name)) continue;
+                if ("apple".equals(name)) continue;
+                if (name.startsWith("family")) continue;
+                if (name.startsWith("couple")) continue;
+                if (name.startsWith("kiss")) continue;
+                if (name.startsWith("pregnant")) continue;
+                if (name.contains("holding hands")) continue;
+                if (used.add(name)) {
                     String codename = entry.getString("hexcode");
                     name += ".png";
-                    FileHandle original = Gdx.files.local("../../"+RAW_DIR+"/" + codename + ".png");
+                    FileHandle original = Gdx.files.local("../../" + RAW_DIR + "/" + codename + ".png");
                     if (original.exists()) {
-                        if(entry.has("emoji"))
-                            original.copyTo(Gdx.files.local("../.."+where+TYPE+"/emoji/" + entry.getString("emoji") + ".png"));
-                        original.copyTo(Gdx.files.local("../.."+where+TYPE+"/name/" + name));
+                        if (entry.has("emoji"))
+                            original.copyTo(Gdx.files.local("../.." + where + TYPE + "/emoji/" + entry.getString("emoji") + ".png"));
+                        original.copyTo(Gdx.files.local("../.." + where + TYPE + "/name/" + name));
                     }
                 } else {
                     entry.remove();
                 }
             }
             Gdx.files.local("noto-emoji-info-" + ("EMOJI_INOFFENSIVE".equals(MODE) ? "inoffensive" : "inoffensive-mono") + ".json").writeString(json.toJson(JsonWriter.OutputType.json).replace("{", "\n{"), false);
-        }
-        else if("EMOJI_HTML".equals(MODE)) {
+        } else if ("EMOJI_HTML".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal("noto-emoji-info.json"));
             StringBuilder sb = new StringBuilder(4096);
             sb.append("""
@@ -359,7 +379,7 @@ public class Main extends ApplicationAdapter {
                     \t<meta id="gameViewport" name="viewport" content="width=device-width initial-scale=1">
                     \t<link href="styles.css" rel="stylesheet" type="text/css">
                     </head>
-                    
+                                        
                     """);
             sb.append("<body>\n");
             sb.append("<h1>NotoEmoji Preview</h1>\n");
@@ -383,26 +403,25 @@ public class Main extends ApplicationAdapter {
                 sb.append("\t<div class=\"item\">\n" +
                                 "\t\t<img src=\"").append(TYPE).append('/')
                         .append(emojiFile).append("\" alt=\"").append(name).append("\" />\n");
-                if(!emojiChar.isEmpty()) sb.append("\t\t<p>").append(emojiChar).append("</p>\n");
+                if (!emojiChar.isEmpty()) sb.append("\t\t<p>").append(emojiChar).append("</p>\n");
                 sb.append("\t\t<p>").append(name).append("</p>\n").append("\t</div>\n");
             }
             sb.append("</div>\n</body>\n");
             sb.append("</html>\n");
             Gdx.files.local(TYPE.equals("color") ? "index.html" : "black.html")
                     .writeString(sb.toString(), false, "UTF8");
-        }
-        else if("FLAG".equals(MODE)) {
+        } else if ("FLAG".equals(MODE)) {
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             char[] buffer = new char[2];
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-                if(!"Flags (country-flag)".equals(entry.getString("category"))) continue;
+                if (!"Flags (country-flag)".equals(entry.getString("category"))) continue;
 
                 String codename = entry.getString("hexcode") + ".png";
                 String charString = entry.getString("emoji") + ".png";
                 String name = entry.getString("name");
                 String countryUnicode = entry.getString("emoji");
-                buffer[0] = (char)(countryUnicode.codePointAt(1) - 56806 + 'A');
-                buffer[1] = (char)(countryUnicode.codePointAt(3) - 56806 + 'A');
+                buffer[0] = (char) (countryUnicode.codePointAt(1) - 56806 + 'A');
+                buffer[1] = (char) (countryUnicode.codePointAt(3) - 56806 + 'A');
                 String countryCode = String.valueOf(buffer);
                 FileHandle original = Gdx.files.local("../../scaled-tiny/" + codename);
                 if (original.exists()) {
@@ -436,6 +455,16 @@ public class Main extends ApplicationAdapter {
                 .mapToObj(pt -> String.format("%04X", pt))
                 .reduce("emoji_u", (a, b) -> a + b + "_");
         return name.substring(0, name.length()-1);
+    }
+
+
+    public static String codePointsToEmoji(String codePoints) {
+        StringBuilder sb = new StringBuilder(8);
+        String[] pts = codePoints.substring(7).split("_");
+        for(String c : pts){
+            sb.appendCodePoint(Integer.parseInt(c, 16));
+        }
+        return sb.toString();
     }
 
 }
