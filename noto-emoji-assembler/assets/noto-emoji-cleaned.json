@@ -1542,8 +1542,6 @@
 {"emoji":"©️","category":"Symbols","aliases":["copyright"],"name":"copyright"},
 {"emoji":"®️","category":"Symbols","aliases":["registered"],"name":"registered"},
 {"emoji":"™️","category":"Symbols","aliases":["tm"],"name":"trade mark"},
-{"emoji":"#️⃣","category":"Symbols","aliases":["hash"],"name":"keycap, #"},
-{"emoji":"*️⃣","category":"Symbols","aliases":["asterisk"],"name":"keycap, *"},
 {"emoji":"0️⃣","category":"Symbols","aliases":["zero"],"name":"keycap, 0"},
 {"emoji":"1️⃣","category":"Symbols","aliases":["one"],"name":"keycap, 1"},
 {"emoji":"2️⃣","category":"Symbols","aliases":["two"],"name":"keycap, 2"},
