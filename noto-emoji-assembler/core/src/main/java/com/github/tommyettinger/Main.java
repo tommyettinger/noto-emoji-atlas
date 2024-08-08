@@ -18,9 +18,7 @@ import com.github.tommyettinger.anim8.QualityPalette;
 import java.io.IOException;
 import java.lang.StringBuilder;
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -70,8 +68,9 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-//    public static final String MODE = "MODIFY_JSON"; // run this first
-    public static final String MODE = "EMOJI_LARGE"; // run this second
+    public static final String MODE = "MODIFY_CLDR"; // run this first
+//    public static final String MODE = "MODIFY_JSON"; // run this next?
+//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
@@ -94,7 +93,24 @@ public class Main extends ApplicationAdapter {
 
         HashMap<String, String> zwjMap = makeZwjMap();
 
-        if ("MODIFY_JSON".equals(MODE)) {
+        if ("MODIFY_CLDR".equals(MODE)) {
+            //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
+            //"description": "[^"]*[^\u0000-\u007F][^"]*",
+            //To locate any names with characters that could be a problem, use this regex (may need expanding):
+            //"description": "[^"]*[^0-9a-zA-Z' ,!-][^"]*",
+            //Might be useful for locating intermediate things that need replacement?
+            //"description": "[^"]*[^0-9a-zA-Z' ,:\(\)!-][^"]*",
+
+            Json j = new Json(JsonWriter.OutputType.json);
+            LinkedHashMap<?, ?> cldr = j.fromJson(LinkedHashMap.class, Gdx.files.internal("names-cldr-raw.json"));
+            LinkedHashMap<String, String> next = new LinkedHashMap<>(cldr.size());
+            for(Map.Entry<?, ?> ent : cldr.entrySet()){
+                next.put("emoji_u" + ent.getKey().toString().replace('-', '_').toLowerCase(Locale.ROOT), ent.getValue().toString());
+            }
+
+            j.toJson(next, LinkedHashMap.class, String.class, Gdx.files.local("names-cldr.json"));
+
+        } else if ("MODIFY_JSON".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
             //"description": "[^"]*[^\u0000-\u007F][^"]*",
             //To locate any names with characters that could be a problem, use this regex (may need expanding):
