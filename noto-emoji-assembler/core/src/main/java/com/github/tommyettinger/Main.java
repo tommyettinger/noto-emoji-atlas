@@ -243,7 +243,15 @@ public class Main extends ApplicationAdapter {
                 String codename = original.nameWithoutExtension();
                 String emoji = codePointsToEmoji(codename);
                 original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/emoji/" + emoji + ".png"));
-                String name = zwjMap.getOrDefault(emoji, knownMap.get(emoji));
+                String name = null;
+                if(zwjMap.containsKey(emoji)){
+                    name = zwjMap.get(emoji);
+                } else if(knownMap.containsKey(emoji)){
+                    name = knownMap.get(emoji);
+                }
+                if(name == null){
+                    System.out.println("WHAT! Emoji '" + emoji + "' has no name, but has codename " + codename + ", reconstructed to " + emojiToCodePoints(emoji) + " .");
+                }
                 original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/name/" + name + ".png"));
                 if (aliasMap.containsKey(emoji)) {
                     for (String alias : aliasMap.get(emoji)) {
@@ -1926,7 +1934,7 @@ public class Main extends ApplicationAdapter {
 
     public static String emojiToCodePoints(String emoji) {
         String name = emoji.codePoints()
-                .mapToObj(pt -> String.format("%04X", pt))
+                .mapToObj(pt -> String.format("%04x", pt))
                 .reduce("emoji_u", (a, b) -> a + b + "_");
         return name.substring(0, name.length()-1);
     }
