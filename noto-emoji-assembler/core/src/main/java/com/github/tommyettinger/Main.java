@@ -68,10 +68,10 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-    public static final String MODE = "MODIFY_CLDR"; // run this first
-//    public static final String MODE = "MODIFY_ALIASES"; // run this first
+//    public static final String MODE = "MODIFY_CLDR"; // run this first
+//    public static final String MODE = "MODIFY_ALIASES"; // run this next
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
-//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
+    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
@@ -94,6 +94,7 @@ public class Main extends ApplicationAdapter {
         Json j = new Json(JsonWriter.OutputType.json);
 
         HashMap<String, String> zwjMap = makeZwjMap();
+        LinkedHashMap<String, String> strippedToEmojiMap = j.fromJson(LinkedHashMap.class, String.class, Gdx.files.internal("stripped-to-emoji.json"));
 
         if ("MODIFY_CLDR".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
@@ -127,7 +128,7 @@ public class Main extends ApplicationAdapter {
             JsonValue json = reader.parse(Gdx.files.internal("shortcodes-discord-raw.json"));
             LinkedHashMap<String, String[]> next = new LinkedHashMap<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-                String name = "emoji_u" + entry.name.replace('-', '_').toLowerCase(Locale.ROOT);
+                String name = stripFE0F("emoji_u" + entry.name.replace('-', '_').toLowerCase(Locale.ROOT));
                 if(entry.isString()){
                     next.put(name, new String[]{entry.asString()});
                 } else {
@@ -257,8 +258,7 @@ public class Main extends ApplicationAdapter {
             }
         } else if ("EMOJI_LARGE".equals(MODE)) {
 
-            JsonValue json = reader.parse(Gdx.files.internal(JSON));
-            HashSet<String> used = new HashSet<>(json.size);
+//            JsonValue json = reader.parse(Gdx.files.internal(JSON));
             HashMap<String, String> knownMap = j.fromJson(HashMap.class, String.class, Gdx.files.internal("names-cldr.json"));
             HashMap<String, String[]> aliasMap = j.fromJson(HashMap.class, String[].class, Gdx.files.internal("aliases.json"));
 //            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
@@ -283,7 +283,11 @@ public class Main extends ApplicationAdapter {
             FileHandle[] files = rawDir.list(".png");
             for (FileHandle original : files) {
                 String codename = original.nameWithoutExtension();
-                String emoji = codePointsToEmoji(codename);
+                String emoji = strippedToEmojiMap.get(codename);
+                if(emoji == null) {
+                    System.out.println("WHOOPS, codename " + codename + " has no emoji!");
+                    continue;
+                }
                 original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/emoji/" + emoji + ".png"));
                 String name = null;
                 if(zwjMap.containsKey(emoji)){
@@ -293,6 +297,7 @@ public class Main extends ApplicationAdapter {
                 }
                 if(name == null){
                     System.out.println("WHAT! Emoji '" + emoji + "' has no name, but has codename " + codename + ", reconstructed to " + emojiToCodePoints(emoji) + " .");
+                    continue;
                 }
                 original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/name/" + name + ".png"));
                 if (aliasMap.containsKey(codename)) {
