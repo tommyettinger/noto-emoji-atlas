@@ -68,10 +68,10 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-//    public static final String MODE = "MODIFY_CLDR"; // run this first
+    public static final String MODE = "MODIFY_CLDR"; // run this first
 //    public static final String MODE = "MODIFY_ALIASES"; // run this first
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
-    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
+//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
@@ -105,11 +105,16 @@ public class Main extends ApplicationAdapter {
 
             LinkedHashMap<?, ?> cldr = j.fromJson(LinkedHashMap.class, Gdx.files.internal("names-cldr-raw.json"));
             LinkedHashMap<String, String> next = new LinkedHashMap<>(cldr.size());
+            LinkedHashMap<String, String> toEmoji = new LinkedHashMap<>(cldr.size());
             for(Map.Entry<?, ?> ent : cldr.entrySet()){
-                next.put("emoji_u" + ent.getKey().toString().replace('-', '_').toLowerCase(Locale.ROOT), ent.getValue().toString());
+                String name = "emoji_u" + ent.getKey().toString().replace('-', '_').toLowerCase(Locale.ROOT),
+                        stripped = stripFE0F(name);
+                next.put(stripped, ent.getValue().toString());
+                toEmoji.put(stripped, codePointsToEmoji(name));
             }
 
             j.toJson(next, LinkedHashMap.class, String.class, Gdx.files.local("names-cldr.json"));
+            j.toJson(toEmoji, LinkedHashMap.class, String.class, Gdx.files.local("stripped-to-emoji.json"));
 
         } else if ("MODIFY_ALIASES".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
@@ -1977,6 +1982,10 @@ public class Main extends ApplicationAdapter {
         return name.substring(0, name.length()-1);
     }
 
+    public static String stripFE0F(String str) {
+        return str.replaceAll("_fe0f", "");
+    }
+
 
     public static String codePointsToEmoji(String codePoints) {
         StringBuilder sb = new StringBuilder(8);
@@ -1984,9 +1993,9 @@ public class Main extends ApplicationAdapter {
         for(String c : pts){
             int n = Integer.parseInt(c, 16);
             sb.appendCodePoint(n);
-            if(n < 0x10000 && n != 0x200D){
-                sb.appendCodePoint(0xFE0F);
-            }
+//            if(n < 0x10000 && n != 0x200D){
+//                sb.appendCodePoint(0xFE0F);
+//            }
         }
         return sb.toString();
     }
