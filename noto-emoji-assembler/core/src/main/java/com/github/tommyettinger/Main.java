@@ -68,7 +68,8 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class Main extends ApplicationAdapter {
-    public static final String MODE = "MODIFY_CLDR"; // run this first
+//    public static final String MODE = "MODIFY_CLDR"; // run this first
+    public static final String MODE = "MODIFY_ALIASES"; // run this first
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
 //    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
@@ -109,6 +110,27 @@ public class Main extends ApplicationAdapter {
             }
 
             j.toJson(next, LinkedHashMap.class, String.class, Gdx.files.local("names-cldr.json"));
+
+        } else if ("MODIFY_ALIASES".equals(MODE)) {
+            //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
+            //"description": "[^"]*[^\u0000-\u007F][^"]*",
+            //To locate any names with characters that could be a problem, use this regex (may need expanding):
+            //"description": "[^"]*[^0-9a-zA-Z' ,!-][^"]*",
+            //Might be useful for locating intermediate things that need replacement?
+            //"description": "[^"]*[^0-9a-zA-Z' ,:\(\)!-][^"]*",
+
+            Json j = new Json(JsonWriter.OutputType.json);
+            JsonValue json = reader.parse(Gdx.files.internal("shortcodes-discord-raw.json"));
+            LinkedHashMap<String, String[]> next = new LinkedHashMap<>(json.size);
+            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
+                String name = "emoji_u" + entry.name.replace('-', '_').toLowerCase(Locale.ROOT);
+                if(entry.isString()){
+                    next.put(name, new String[]{entry.asString()});
+                } else {
+                    next.put(name, entry.asStringArray());
+                }
+            }
+            j.toJson(next, LinkedHashMap.class, String[].class, Gdx.files.local("aliases.json"));
 
         } else if ("MODIFY_JSON".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
