@@ -69,9 +69,9 @@ import java.util.regex.Pattern;
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_CLDR"; // run this first
-    public static final String MODE = "MODIFY_ALIASES"; // run this first
+//    public static final String MODE = "MODIFY_ALIASES"; // run this first
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
-//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
+    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
@@ -91,6 +91,7 @@ public class Main extends ApplicationAdapter {
     @Override
     public void create() {
         JsonReader reader = new JsonReader();
+        Json j = new Json(JsonWriter.OutputType.json);
 
         HashMap<String, String> zwjMap = makeZwjMap();
 
@@ -102,7 +103,6 @@ public class Main extends ApplicationAdapter {
             //Might be useful for locating intermediate things that need replacement?
             //"description": "[^"]*[^0-9a-zA-Z' ,:\(\)!-][^"]*",
 
-            Json j = new Json(JsonWriter.OutputType.json);
             LinkedHashMap<?, ?> cldr = j.fromJson(LinkedHashMap.class, Gdx.files.internal("names-cldr-raw.json"));
             LinkedHashMap<String, String> next = new LinkedHashMap<>(cldr.size());
             for(Map.Entry<?, ?> ent : cldr.entrySet()){
@@ -119,7 +119,6 @@ public class Main extends ApplicationAdapter {
             //Might be useful for locating intermediate things that need replacement?
             //"description": "[^"]*[^0-9a-zA-Z' ,:\(\)!-][^"]*",
 
-            Json j = new Json(JsonWriter.OutputType.json);
             JsonValue json = reader.parse(Gdx.files.internal("shortcodes-discord-raw.json"));
             LinkedHashMap<String, String[]> next = new LinkedHashMap<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
@@ -255,25 +254,25 @@ public class Main extends ApplicationAdapter {
 
             JsonValue json = reader.parse(Gdx.files.internal(JSON));
             HashSet<String> used = new HashSet<>(json.size);
-            HashMap<String, String> knownMap = new HashMap<>(4000);
-            HashMap<String, ArrayList<String>> aliasMap = new HashMap<>(4000);
-            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-                String name = entry.getString("name");
-                if (used.add(name)) {
-                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    FileHandle original = Gdx.files.local("../../" + RAW_DIR + "/" + codename + ".png");
-                    if (original.exists()) {
-                        knownMap.put(emoji, name);
-                        if (entry.hasChild("aliases")) {
-                            ArrayList<String> als = new ArrayList<>(4);
-                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
-                                als.add(alias.asString());
-                            }
-                            if(!als.isEmpty()) aliasMap.put(emoji, als);
-                        }
-                    }
-                }
-            }
+            HashMap<String, String> knownMap = j.fromJson(HashMap.class, String.class, Gdx.files.internal("names-cldr.json"));
+            HashMap<String, String[]> aliasMap = j.fromJson(HashMap.class, String[].class, Gdx.files.internal("aliases.json"));
+//            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
+//                String name = entry.getString("name");
+//                if (used.add(name)) {
+//                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
+//                    FileHandle original = Gdx.files.local("../../" + RAW_DIR + "/" + codename + ".png");
+//                    if (original.exists()) {
+//                        knownMap.put(emoji, name);
+//                        if (entry.hasChild("aliases")) {
+//                            ArrayList<String> als = new ArrayList<>(4);
+//                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
+//                                als.add(alias.asString());
+//                            }
+//                            if(!als.isEmpty()) aliasMap.put(emoji, als);
+//                        }
+//                    }
+//                }
+//            }
 
             FileHandle rawDir = Gdx.files.local("../../" + RAW_DIR + "/");
             FileHandle[] files = rawDir.list(".png");
@@ -284,15 +283,15 @@ public class Main extends ApplicationAdapter {
                 String name = null;
                 if(zwjMap.containsKey(emoji)){
                     name = zwjMap.get(emoji);
-                } else if(knownMap.containsKey(emoji)){
-                    name = knownMap.get(emoji);
+                } else if(knownMap.containsKey(codename)){
+                    name = knownMap.get(codename);
                 }
                 if(name == null){
                     System.out.println("WHAT! Emoji '" + emoji + "' has no name, but has codename " + codename + ", reconstructed to " + emojiToCodePoints(emoji) + " .");
                 }
                 original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/name/" + name + ".png"));
-                if (aliasMap.containsKey(emoji)) {
-                    for (String alias : aliasMap.get(emoji)) {
+                if (aliasMap.containsKey(codename)) {
+                    for (String alias : aliasMap.get(codename)) {
                         original.copyTo(Gdx.files.local("../../renamed-" + TYPE + "/ignored/alias/" + alias + ".png"));
                     }
                 }
@@ -1973,6 +1972,7 @@ public class Main extends ApplicationAdapter {
     public static String emojiToCodePoints(String emoji) {
         String name = emoji.codePoints()
                 .mapToObj(pt -> String.format("%04x", pt))
+//                .mapToObj(pt -> pt >= 0x10000 || pt == 0x200D ? String.format("%04x", pt) : String.format("%04x_FE0F", pt))
                 .reduce("emoji_u", (a, b) -> a + b + "_");
         return name.substring(0, name.length()-1);
     }
@@ -1982,7 +1982,11 @@ public class Main extends ApplicationAdapter {
         StringBuilder sb = new StringBuilder(8);
         String[] pts = codePoints.substring(7).split("_");
         for(String c : pts){
-            sb.appendCodePoint(Integer.parseInt(c, 16));
+            int n = Integer.parseInt(c, 16);
+            sb.appendCodePoint(n);
+            if(n < 0x10000 && n != 0x200D){
+                sb.appendCodePoint(0xFE0F);
+            }
         }
         return sb.toString();
     }
