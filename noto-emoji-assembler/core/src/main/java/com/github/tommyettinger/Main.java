@@ -69,9 +69,9 @@ import java.util.regex.Pattern;
  */
 public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_CLDR"; // run this first
-//    public static final String MODE = "MODIFY_ALIASES"; // run this next
+    public static final String MODE = "MODIFY_ALIASES"; // run this next
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
-    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
+//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
 //    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
@@ -125,7 +125,8 @@ public class Main extends ApplicationAdapter {
             //Might be useful for locating intermediate things that need replacement?
             //"description": "[^"]*[^0-9a-zA-Z' ,:\(\)!-][^"]*",
 
-            JsonValue json = reader.parse(Gdx.files.internal("shortcodes-discord-raw.json"));
+            JsonValue json = reader.parse(Gdx.files.internal("shortcodes-emojibase-raw.json"));
+//            JsonValue json = reader.parse(Gdx.files.internal("shortcodes-discord-raw.json"));
             LinkedHashMap<String, String[]> next = new LinkedHashMap<>(json.size);
             for (JsonValue entry = json.child; entry != null; entry = entry.next) {
                 String name = stripFE0F("emoji_u" + entry.name.replace('-', '_').toLowerCase(Locale.ROOT));
@@ -135,7 +136,8 @@ public class Main extends ApplicationAdapter {
                     next.put(name, entry.asStringArray());
                 }
             }
-            j.toJson(next, LinkedHashMap.class, String[].class, Gdx.files.local("aliases.json"));
+            j.toJson(next, LinkedHashMap.class, String[].class, Gdx.files.local("aliases_emojibase.json"));
+//            j.toJson(next, LinkedHashMap.class, String[].class, Gdx.files.local("aliases_discord.json"));
 
         } else if ("MODIFY_JSON".equals(MODE)) {
             //To locate any names with non-ASCII chars in emoji_15_1.json, use this regex:
