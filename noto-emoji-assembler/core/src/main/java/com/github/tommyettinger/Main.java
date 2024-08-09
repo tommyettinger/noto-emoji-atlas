@@ -71,9 +71,9 @@ public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_CLDR"; // run this first
 //    public static final String MODE = "MODIFY_ALIASES"; // run this next
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
-    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
+//    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
-//    public static final String MODE = "EMOJI_SMALL";
+    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
 //    public static final String MODE = "EMOJI_HTML";
 //    public static final String MODE = "FLAG";
@@ -217,24 +217,33 @@ public class Main extends ApplicationAdapter {
             }
             Gdx.files.local("noto-emoji-info.json").writeString(json.toJson(JsonWriter.OutputType.json).replace("{", "\n{"), false);
         } else if ("EMOJI_SMALL".equals(MODE)) {
-            JsonValue json = reader.parse(Gdx.files.internal(JSON));
-            ObjectSet<String> used = new ObjectSet<>(json.size);
-            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-                String name = entry.getString("name");
-                if (used.add(name)) {
-                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-                    FileHandle original = Gdx.files.local("../../" + RAW_SMALL_DIR + "/" + codename + ".png");
-                    if (original.exists()) {
-                        original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/emoji/" + emoji + ".png"));
-                        original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/name/" + name + ".png"));
-                        if (entry.hasChild("aliases")) {
-                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
-                                original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/ignored/alias/" + alias.asString() + ".png"));
-                            }
-                        }
+            HashMap<String, String> knownMap = j.fromJson(HashMap.class, String.class, Gdx.files.internal("names-cldr.json"));
+            HashMap<String, String[]> aliasMap = j.fromJson(HashMap.class, String[].class, Gdx.files.internal("aliases.json"));
+            FileHandle rawDir = Gdx.files.local("../../" + RAW_SMALL_DIR + "/");
+            FileHandle[] files = rawDir.list(".png");
+            for (FileHandle original : files) {
+                String codename = original.nameWithoutExtension();
+                String emoji = strippedToEmojiMap.get(codename);
+                if(emoji == null) {
+                    System.out.println("WHOOPS, codename " + codename + " has no emoji!");
+                    continue;
+                }
+                original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/emoji/" + emoji + ".png"));
+                String name = null;
+                if(zwjMap.containsKey(emoji)){
+                    name = zwjMap.get(emoji);
+                } else if(knownMap.containsKey(codename)){
+                    name = knownMap.get(codename);
+                }
+                if(name == null){
+                    System.out.println("WHAT! Emoji '" + emoji + "' has no name, but has codename " + codename + ", reconstructed to " + emojiToCodePoints(emoji) + " .");
+                    continue;
+                }
+                original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/name/" + name + ".png"));
+                if (aliasMap.containsKey(codename)) {
+                    for (String alias : aliasMap.get(codename)) {
+                        original.copyTo(Gdx.files.local("../../renamed-small-" + TYPE + "/ignored/alias/" + alias + ".png"));
                     }
-                } else {
-                    entry.remove();
                 }
             }
         } else if ("EMOJI_MID".equals(MODE)) {
@@ -267,7 +276,6 @@ public class Main extends ApplicationAdapter {
                     }
                 }
             }
-
         } else if ("EMOJI_LARGE".equals(MODE)) {
 
 //            JsonValue json = reader.parse(Gdx.files.internal(JSON));
