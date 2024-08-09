@@ -73,9 +73,9 @@ public class Main extends ApplicationAdapter {
 //    public static final String MODE = "MODIFY_JSON"; // run this next?
 //    public static final String MODE = "EMOJI_LARGE"; // run this once done modifying
 //    public static final String MODE = "EMOJI_MID";
-    public static final String MODE = "EMOJI_SMALL";
+//    public static final String MODE = "EMOJI_SMALL";
 //    public static final String MODE = "EMOJI_INOFFENSIVE"; // ugh, but needed
-//    public static final String MODE = "EMOJI_HTML";
+    public static final String MODE = "EMOJI_HTML";
 //    public static final String MODE = "FLAG";
 //    public static final String MODE = "WRITE_INFO";
 //    public static final String MODE = "ALTERNATE_PALETTES";
@@ -277,26 +277,6 @@ public class Main extends ApplicationAdapter {
                 }
             }
         } else if ("EMOJI_LARGE".equals(MODE)) {
-
-//            JsonValue json = reader.parse(Gdx.files.internal(JSON));
-//            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-//                String name = entry.getString("name");
-//                if (used.add(name)) {
-//                    String emoji = entry.getString("emoji"), codename = emojiToCodePoints(emoji);
-//                    FileHandle original = Gdx.files.local("../../" + RAW_DIR + "/" + codename + ".png");
-//                    if (original.exists()) {
-//                        knownMap.put(emoji, name);
-//                        if (entry.hasChild("aliases")) {
-//                            ArrayList<String> als = new ArrayList<>(4);
-//                            for (JsonValue alias = entry.getChild("aliases"); alias != null; alias = alias.next) {
-//                                als.add(alias.asString());
-//                            }
-//                            if(!als.isEmpty()) aliasMap.put(emoji, als);
-//                        }
-//                    }
-//                }
-//            }
-
             HashMap<String, String> knownMap = j.fromJson(HashMap.class, String.class, Gdx.files.internal("names-cldr.json"));
             HashMap<String, String[]> aliasMap = j.fromJson(HashMap.class, String[].class, Gdx.files.internal("aliases.json"));
             FileHandle rawDir = Gdx.files.local("../../" + RAW_DIR + "/");
@@ -443,21 +423,20 @@ public class Main extends ApplicationAdapter {
             }
             Gdx.files.local("noto-emoji-info-" + ("EMOJI_INOFFENSIVE".equals(MODE) ? "inoffensive" : "inoffensive-mono") + ".json").writeString(json.toJson(JsonWriter.OutputType.json).replace("{", "\n{"), false);
         } else if ("EMOJI_HTML".equals(MODE)) {
-            JsonValue json = reader.parse(Gdx.files.internal("noto-emoji-info.json"));
             StringBuilder sb = new StringBuilder(4096);
             sb.append("""
                     <!doctype html>
                     <html>
                     <head>
-                    \t<title>NotoEmoji Preview</title>
+                    \t<title>Noto-Emoji Preview</title>
                     \t<meta http-equiv="content-type" content="text/html; charset=UTF-8">
                     \t<meta id="gameViewport" name="viewport" content="width=device-width initial-scale=1">
                     \t<link href="styles.css" rel="stylesheet" type="text/css">
                     </head>
-                                        
+                    
                     """);
             sb.append("<body>\n");
-            sb.append("<h1>NotoEmoji Preview</h1>\n");
+            sb.append("<h1>Noto-Emoji Preview</h1>\n");
             sb.append("<p>This shows all emoji supported by " +
                     "<a href=\"https://github.com/tommyettinger/noto-emoji-atlas\">NotoEmojiAtlas</a>, " +
                     "along with the names each can be looked up by.</p>\n");
@@ -471,15 +450,39 @@ public class Main extends ApplicationAdapter {
                     "<a href=\"https://github.com/tommyettinger/noto-emoji-atlas/blob/main/LICENSE.txt\">OFL 1.1</a>.</p>\n");
             sb.append("<p>Thanks to the entire <a href=\"https://github.com/googlefonts/noto-emoji/\">Noto Emoji project</a>!</p>\n");
             sb.append("<div class=\"box\">\n");
-            for (JsonValue entry = json.child; entry != null; entry = entry.next) {
-                String emojiChar = entry.getString("emoji", "");
-                String name = entry.getString("name");
+
+
+            HashMap<String, String> knownMap = j.fromJson(HashMap.class, String.class, Gdx.files.internal("names-cldr.json"));
+            HashMap<String, String[]> aliasMap = j.fromJson(HashMap.class, String[].class, Gdx.files.internal("aliases.json"));
+            FileHandle rawDir = Gdx.files.local("../../" + RAW_DIR + "/");
+            FileHandle[] files = rawDir.list(".png");
+            for (FileHandle original : files) {
+                String codename = original.nameWithoutExtension();
+                String emoji = strippedToEmojiMap.get(codename);
+                if(emoji == null) {
+                    continue;
+                }
+                String name = null;
+                if(zwjMap.containsKey(emoji)){
+                    name = zwjMap.get(emoji);
+                } else if(knownMap.containsKey(codename)){
+                    name = knownMap.get(codename);
+                }
+                if(name == null){
+                    continue;
+                }
                 String emojiFile = "name/" + name + ".png";
                 sb.append("\t<div class=\"item\">\n" +
                                 "\t\t<img src=\"").append(TYPE).append('/')
                         .append(emojiFile).append("\" alt=\"").append(name).append("\" />\n");
-                if (!emojiChar.isEmpty()) sb.append("\t\t<p>").append(emojiChar).append("</p>\n");
-                sb.append("\t\t<p>").append(name).append("</p>\n").append("\t</div>\n");
+                if (!emoji.isEmpty()) sb.append("\t\t<p>").append(emoji).append("</p>\n");
+                sb.append("\t\t<p>").append(name).append("</p>\n");
+                if (aliasMap.containsKey(codename)) {
+                    for (String alias : aliasMap.get(codename)) {
+                        sb.append("\t\t<p>").append(alias).append("</p>\n");
+                    }
+                }
+                sb.append("\t</div>\n");
             }
             sb.append("</div>\n</body>\n");
             sb.append("</html>\n");
