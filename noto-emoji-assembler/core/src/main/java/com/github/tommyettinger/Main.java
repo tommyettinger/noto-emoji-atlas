@@ -479,6 +479,7 @@ public class Main extends ApplicationAdapter {
                 sb.append("\t\t<p>").append(name).append("</p>\n");
                 if (aliasMap.containsKey(codename)) {
                     for (String alias : aliasMap.get(codename)) {
+                        if(alias.equals(name)) continue;
                         sb.append("\t\t<p>").append(alias).append("</p>\n");
                     }
                 }
